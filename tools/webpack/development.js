@@ -11,8 +11,8 @@ const { baseDir } = require( './shared' );
 /**
  * Webpack configuration for development scripts (React Refresh).
  *
- * These scripts enable hot module replacement for block development
- * when using `@wordpress/scripts` with the `--hot` flag.
+ * These scripts enable hot module replacement for plugins
+ * using `@wordpress/scripts` with the `--hot` flag.
  *
  * @param {Object} env             Environment options.
  * @param {string} env.buildTarget Build target directory.
