@@ -298,7 +298,8 @@ class Tests_Theme_wpThemeJson extends WP_UnitTestCase {
 				'core/paragraph' => array(
 					'typography' => array(
 						'lineHeight'  => false,
-						'textColumns' => true,					),
+						'textColumns' => true,
+					),
 				),
 				'core/group'     => array(
 					'background' => array(
