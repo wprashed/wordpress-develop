@@ -297,8 +297,7 @@ class Tests_Theme_wpThemeJson extends WP_UnitTestCase {
 			'blocks'     => array(
 				'core/paragraph' => array(
 					'typography' => array(
-						'lineHeight'  => false,
-						'textColumns' => true,
+						'lineHeight' => false,
 					),
 				),
 				'core/group'     => array(
@@ -331,7 +330,8 @@ class Tests_Theme_wpThemeJson extends WP_UnitTestCase {
 						'padding'  => true,
 					),
 					'typography' => array(
-						'lineHeight' => false,
+						'lineHeight'  => false,
+						'textColumns' => true,
 					),
 				),
 			),
