@@ -291,13 +291,14 @@ class Tests_Theme_wpThemeJson extends WP_UnitTestCase {
 				'padding'  => true,
 			),
 			'typography' => array(
-				'lineHeight' => true,
+				'lineHeight'  => true,
+				'textColumns' => true,
 			),
 			'blocks'     => array(
 				'core/paragraph' => array(
 					'typography' => array(
-						'lineHeight' => false,
-					),
+						'lineHeight'  => false,
+						'textColumns' => true,					),
 				),
 				'core/group'     => array(
 					'background' => array(
