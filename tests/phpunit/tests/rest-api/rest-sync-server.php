@@ -623,6 +623,63 @@ class WP_Test_REST_Sync_Server extends WP_Test_REST_Controller_Testcase {
 		$this->assertFalse( $data['rooms'][0]['should_compact'] );
 	}
 
+	public function test_sync_stale_compaction_succeeds_when_newer_compaction_exists() {
+		wp_set_current_user( self::$editor_id );
+
+		$room   = $this->get_post_room();
+		$update = array(
+			'type' => 'update',
+			'data' => 'dGVzdA==',
+		);
+
+		// Client 1 sends an update to seed the room.
+		$response = $this->dispatch_sync(
+			array(
+				$this->build_room( $room, 1, 0, array( 'user' => 'c1' ), array( $update ) ),
+			)
+		);
+
+		$end_cursor = $response->get_data()['rooms'][0]['end_cursor'];
+
+		// Client 2 sends a compaction at the current cursor.
+		$compaction = array(
+			'type' => 'compaction',
+			'data' => 'Y29tcGFjdGVk',
+		);
+
+		$this->dispatch_sync(
+			array(
+				$this->build_room( $room, 2, $end_cursor, array( 'user' => 'c2' ), array( $compaction ) ),
+			)
+		);
+
+		// Client 3 sends a stale compaction at cursor 0. The server should find
+		// client 2's compaction in the updates after cursor 0 and silently discard
+		// this one.
+		$stale_compaction = array(
+			'type' => 'compaction',
+			'data' => 'c3RhbGU=',
+		);
+		$response         = $this->dispatch_sync(
+			array(
+				$this->build_room( $room, 3, 0, array( 'user' => 'c3' ), array( $stale_compaction ) ),
+			)
+		);
+
+		$this->assertSame( 200, $response->get_status() );
+
+		// Verify the newer compaction is preserved and the stale one was not stored.
+		$response    = $this->dispatch_sync(
+			array(
+				$this->build_room( $room, 4, 0, array( 'user' => 'c4' ) ),
+			)
+		);
+		$update_data = wp_list_pluck( $response->get_data()['rooms'][0]['updates'], 'data' );
+
+		$this->assertContains( 'Y29tcGFjdGVk', $update_data, 'The newer compaction should be preserved.' );
+		$this->assertNotContains( 'c3RhbGU=', $update_data, 'The stale compaction should not be stored.' );
+	}
+
 	/*
 	 * Awareness tests.
 	 */
