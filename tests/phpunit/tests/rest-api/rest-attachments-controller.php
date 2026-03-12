@@ -3447,4 +3447,100 @@ class WP_Test_REST_Attachments_Controller extends WP_Test_REST_Post_Type_Control
 		$basename = wp_basename( $new_file );
 		$this->assertMatchesRegularExpression( '/canola-scaled-\d+\.jpg$/', $basename, 'Scaled filename should have numeric suffix when file conflicts with a different attachment.' );
 	}
+
+	/**
+	 * Tests that the finalize endpoint triggers wp_generate_attachment_metadata.
+	 *
+	 * @ticket 62243
+	 * @covers WP_REST_Attachments_Controller::finalize_item
+	 * @requires function imagejpeg
+	 */
+	public function test_finalize_item(): void {
+		wp_set_current_user( self::$author_id );
+
+		// Create an attachment.
+		$request = new WP_REST_Request( 'POST', '/wp/v2/media' );
+		$request->set_header( 'Content-Type', 'image/jpeg' );
+		$request->set_header( 'Content-Disposition', 'attachment; filename=canola.jpg' );
+		$request->set_body( (string) file_get_contents( self::$test_file ) );
+		$response      = rest_get_server()->dispatch( $request );
+		$attachment_id = $response->get_data()['id'];
+
+		$this->assertSame( 201, $response->get_status() );
+
+		// Track whether wp_generate_attachment_metadata filter fires.
+		$filter_metadata = null;
+		$filter_id       = null;
+		$filter_context  = null;
+		add_filter(
+			'wp_generate_attachment_metadata',
+			function ( array $metadata, int $id, string $context ) use ( &$filter_metadata, &$filter_id, &$filter_context ) {
+				$filter_metadata = $metadata;
+				$filter_id       = $id;
+				$filter_context  = $context;
+				$metadata['foo'] = 'bar';
+				return $metadata;
+			},
+			10,
+			3
+		);
+
+		// Call the finalize endpoint.
+		$request  = new WP_REST_Request( 'POST', "/wp/v2/media/{$attachment_id}/finalize" );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status(), 'Finalize endpoint should return 200.' );
+		$this->assertIsArray( $filter_metadata );
+		$this->assertStringContainsString( 'canola', $filter_metadata['file'], 'Expected the canola image to have been had its metadata updated.' );
+		$this->assertSame( $attachment_id, $filter_id, 'Expected the post ID to be passed to the filter.' );
+		$this->assertSame( 'update', $filter_context, 'Filter context should be "update".' );
+		$resulting_metadata = wp_get_attachment_metadata( $attachment_id );
+		$this->assertIsArray( $resulting_metadata );
+		$this->assertArrayHasKey( 'foo', $resulting_metadata, 'Expected new metadata key to have been added.' );
+		$this->assertSame( 'bar', $resulting_metadata['foo'], 'Expected filtered metadata to be updated.' );
+	}
+
+	/**
+	 * Tests that the finalize endpoint requires authentication.
+	 *
+	 * @ticket 62243
+	 * @covers WP_REST_Attachments_Controller::finalize_item
+	 * @requires function imagejpeg
+	 */
+	public function test_finalize_item_requires_auth(): void {
+		wp_set_current_user( self::$author_id );
+
+		// Create an attachment.
+		$request = new WP_REST_Request( 'POST', '/wp/v2/media' );
+		$request->set_header( 'Content-Type', 'image/jpeg' );
+		$request->set_header( 'Content-Disposition', 'attachment; filename=canola.jpg' );
+		$request->set_body( (string) file_get_contents( self::$test_file ) );
+		$response      = rest_get_server()->dispatch( $request );
+		$attachment_id = $response->get_data()['id'];
+
+		// Try finalizing without authentication.
+		wp_set_current_user( 0 );
+
+		$request  = new WP_REST_Request( 'POST', "/wp/v2/media/{$attachment_id}/finalize" );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertErrorResponse( 'rest_cannot_edit_image', $response, 401 );
+	}
+
+	/**
+	 * Tests that the finalize endpoint returns error for invalid attachment ID.
+	 *
+	 * @ticket 62243
+	 * @covers WP_REST_Attachments_Controller::finalize_item
+	 */
+	public function test_finalize_item_invalid_id(): void {
+		wp_set_current_user( self::$author_id );
+
+		$invalid_id = PHP_INT_MAX;
+		$this->assertNull( get_post( $invalid_id ), 'Expected invalid ID to not exist for an existing post.' );
+		$request  = new WP_REST_Request( 'POST', "/wp/v2/media/$invalid_id/finalize" );
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertErrorResponse( 'rest_post_invalid_id', $response, 404 );
+	}
 }
