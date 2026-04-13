@@ -4445,11 +4445,6 @@ body.page .main-navigation {
   max-width: 100% !important;
 }
 
-.wp-block-embed__wrapper iframe[src*="youtube.com/shorts"] {
-    aspect-ratio: 9 / 16;
-    height: auto;
-}
-
 @media only screen and (min-width: 768px) {
   .entry .entry-content > iframe[style] {
     max-width: calc(8 * (100vw / 12) - 28px) !important;
