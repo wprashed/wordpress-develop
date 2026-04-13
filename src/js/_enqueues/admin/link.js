@@ -4,7 +4,7 @@
 
 /* global postboxes, deleteUserSetting, setUserSetting, getUserSetting */
 
-jQuery(document).ready( function($) {
+jQuery( function($) {
 
 	var newCat, noSyncChecks = false, syncChecks, catAddAfter;
 
@@ -19,16 +19,37 @@ jQuery(document).ready( function($) {
 	 *
 	 * @return {boolean} Always returns false to prevent the default behavior.
 	 */
-	$('#category-tabs a').on( 'click', function(){
+	$('#category-tabs a').on( 'click keyup keydown', function( event ){
 		var t = $(this).attr('href');
-		$(this).parent().addClass('tabs').siblings('li').removeClass('tabs');
-		$('.tabs-panel').hide();
-		$(t).show();
-		if ( '#categories-all' == t )
-			deleteUserSetting('cats');
-		else
-			setUserSetting('cats','pop');
-		return false;
+		if ( event.type === 'keydown' && event.key === ' ' ) {
+			event.preventDefault();
+		}
+		if ( ( event.type === 'keyup' && event.key === ' ' ) || ( event.type === 'keydown' && event.key === 'Enter' ) || event.type === 'click' ) {
+			event.preventDefault();
+			$('#category-tabs a').removeAttr( 'aria-selected' ).attr( 'tabindex', '-1' );
+			$(this).attr( 'aria-selected', 'true' ).removeAttr( 'tabindex' );
+			$(this).parent().addClass('tabs').siblings('li').removeClass('tabs');
+			$('.tabs-panel').hide();
+			$(t).show();
+			if ( '#categories-all' == t ) {
+				deleteUserSetting('cats');
+			} else {
+				setUserSetting('cats','pop');
+			}
+			return false;
+		}
+		if ( event.type === 'keyup' && ( event.key === 'ArrowRight' || event.key === 'ArrowLeft' ) ) {
+			$(this).attr( 'tabindex', '-1' );
+			let next = $(this).parent('li').next();
+			let prev = $(this).parent('li').prev();
+			if ( next.length > 0 ) {
+				next.find('a').removeAttr( 'tabindex');
+				next.find('a').trigger( 'focus' );
+			} else {
+				prev.find('a').removeAttr( 'tabindex');
+				prev.find('a').trigger( 'focus' );
+			}
+		}
 	});
 	if ( getUserSetting('cats') )
 		$('#category-tabs a[href="#categories-pop"]').trigger( 'click' );
@@ -81,7 +102,11 @@ jQuery(document).ready( function($) {
 		$(s.what + ' response_data', r).each( function() {
 			var t = $($(this).text());
 			t.find( 'label' ).each( function() {
-				var th = $(this), val = th.find('input').val(), id = th.find('input')[0].id, name = $.trim( th.text() ), o;
+				var th = $(this),
+					val = th.find('input').val(),
+					id = th.find('input')[0].id,
+					name = th.text().trim(),
+					o;
 				$('#' + id).on( 'change', syncChecks );
 				o = $( '<option value="' +  parseInt( val, 10 ) + '"></option>' ).text( name );
 			} );

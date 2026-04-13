@@ -133,13 +133,13 @@ Modal = wp.media.View.extend(/** @lends wp.media.view.Modal.prototype */{
 		}
 
 		// Pause current audio/video even after closing the modal.
-		$( '.mejs-pause button' ).click();
+		$( '.mejs-pause button' ).trigger( 'click' );
 
 		// Enable page scrolling.
 		$( 'body' ).removeClass( 'modal-open' );
 
-		// Hide modal and remove restricted media modal tab focus once it's closed.
-		this.$el.hide().off( 'keydown' );
+		// Hide the modal element by adding display:none.
+		this.$el.hide();
 
 		/*
 		 * Make visible again to assistive technologies all body children that
@@ -155,7 +155,7 @@ Modal = wp.media.View.extend(/** @lends wp.media.view.Modal.prototype */{
 			// Fallback to the admin page main element.
 			$( '#wpbody-content' )
 				.attr( 'tabindex', '-1' )
-				.focus();
+				.trigger( 'focus' );
 		}
 
 		this.propagate('close');
@@ -178,6 +178,29 @@ Modal = wp.media.View.extend(/** @lends wp.media.view.Modal.prototype */{
 	escapeHandler: function( event ) {
 		event.preventDefault();
 		this.escape();
+	},
+
+	/**
+	 * Handles the selection of attachments when the command or control key is pressed with the enter key.
+	 *
+	 * @since 6.7
+	 *
+	 * @param {Object} event The keydown event object.
+	 */
+	selectHandler: function( event ) {
+		var selection = this.controller.state().get( 'selection' );
+
+		if ( selection.length <= 0 ) {
+			return;
+		}
+
+		if ( 'insert' === this.controller.options.state ) {
+			this.controller.trigger( 'insert', selection );
+		} else {
+			this.controller.trigger( 'select', selection );
+			event.preventDefault();
+			this.escape();
+		}
 	},
 
 	/**
@@ -214,6 +237,13 @@ Modal = wp.media.View.extend(/** @lends wp.media.view.Modal.prototype */{
 			this.escape();
 			event.stopImmediatePropagation();
 		}
+
+		// Select the attachment when command or control and enter are pressed.
+		if ( ( 13 === event.which || 10 === event.which ) && ( event.metaKey || event.ctrlKey ) ) {
+			this.selectHandler( event );
+			event.stopImmediatePropagation();
+		}
+
 	}
 });
 
